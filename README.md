@@ -9,9 +9,21 @@ A professional Bash script that starts only when external power is detected and 
 
 ## Compatibility & Requirements
 
-### Supported Environments
+### Expected Compatibility
 - **`systemd`-based Linux** with `systemd-logind` (e.g., Ubuntu, Debian, Fedora, Arch, openSUSE).
 - **Non-`systemd` Linux** with `elogind` (e.g., Void Linux, Artix, Gentoo, Devuan, Alpine Linux with elogind).
+
+The distributions above describe the intended compatibility range, not a
+guarantee that every release, desktop environment, or hardware platform has
+been tested. The script requires Bash, `/sys/class/power_supply`, and a
+working `systemd-inhibit` or `elogind-inhibit` command that can acquire a
+blocking inhibitor lock for the current session.
+
+### Tested Platforms
+
+No platform-specific compatibility claims are recorded yet. Add an entry here
+only after verifying the script on a real system, including its power-supply
+reporting and lid-close behavior.
 
 ### Unsupported Environments
 - Systems without a logind-compatible inhibitor backend (e.g., pure `acpid`-only setups).
@@ -33,7 +45,32 @@ A professional Bash script that starts only when external power is detected and 
 3. **To stop and restore normal behavior**:
    Simply press `Ctrl+C` in the terminal running the script.
 
+Running multiple instances creates multiple independent inhibitor locks. Normal
+sleep and lid-close behavior is restored after all running instances have
+exited.
+
 ---
+
+## Limitations
+
+Keep Awake holds a logind-compatible inhibitor lock only while the process is
+running. The charger check is performed at startup and is not repeated after
+the inhibitor starts.
+
+It does not:
+
+- configure or maintain Wi-Fi, Ethernet, or SSH connectivity;
+- override firmware-level shutdown or thermal protection;
+- prevent power loss or battery discharge after the charger is disconnected;
+- guarantee identical behavior across all desktop environments and hardware;
+- prevent sleep mechanisms that do not honor the selected logind inhibitor.
+
+## Safety
+
+Running a laptop continuously with the lid closed may increase heat depending
+on the device's cooling design. Keep the device adequately ventilated, avoid
+enclosed bags or containers, and do not disable normal operating-system or
+firmware thermal protections.
 
 ## Verification Plan
 
