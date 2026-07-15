@@ -1,6 +1,6 @@
 # Keep Awake
 
-A professional Bash script to prevent a Linux laptop from suspending or sleeping when the lid is closed, provided it is connected to a charger. This is ideal for using a laptop as a server or accessing it via SSH, allowing you to close the lid without interrupting operations.
+A professional Bash script that starts only when external power is detected and then holds a logind-compatible inhibitor lock until terminated, allowing a laptop to remain awake with the lid closed for workloads such as SSH.
 
 ## Features
 - **Charger Detection**: Checks for an active external power source (AC/Mains/USB PD) using `/sys/class/power_supply` and fails fast if running only on battery. This check serves as a startup precondition.
@@ -65,4 +65,4 @@ Perform these steps to verify that your system is configured correctly and that 
 
 6. **Verify Lock Release**: Press `Ctrl+C` on the active script, and verify that the inhibitor lock is released immediately.
 
-7. **Restore Behavior**: Verify that closing the lid now behaves normally (e.g., suspends the laptop).
+7. **Restore Behavior**: Verify that the system returns to its previously configured lid-close and sleep behavior.
