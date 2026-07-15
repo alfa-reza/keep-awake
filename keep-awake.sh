@@ -4,22 +4,35 @@
 # if an unset variable is referenced, or if a pipeline fails.
 set -euo pipefail
 
-# 1. Check if the system is running systemd as the init system (PID 1)
-if [ "$(ps -p 1 -o comm= 2>/dev/null)" != "systemd" ] && ! command -v systemctl >/dev/null 2>&1; then
-    echo "Error: This script requires a systemd-based Linux distribution." >&2
-    exit 1
-fi
+# Determine a working logind-compatible inhibitor backend.
+detect_inhibitor() {
+    local candidate
 
-# 2. Check if systemd-inhibit is available
-if ! command -v systemd-inhibit >/dev/null 2>&1; then
-    echo "Error: systemd-inhibit is not installed or not in PATH." >&2
-    exit 1
-fi
+    for candidate in systemd-inhibit elogind-inhibit; do
+        command -v "$candidate" >/dev/null 2>&1 || continue
 
-# 3. Check if systemd-logind is active
-if [ "$(systemctl is-active systemd-logind 2>/dev/null)" != "active" ]; then
-    echo "Error: systemd-logind service is not active." >&2
-    echo "This service is required to manage inhibitor locks and lid switch events." >&2
+        # Perform an actual capability probe. Run 'true' to quickly hold and release the lock.
+        if "$candidate" \
+            --what="sleep:handle-lid-switch" \
+            --who="${USER:-$(id -un)}" \
+            --why="keep-awake capability probe" \
+            --mode="block" \
+            true >/dev/null 2>&1
+        then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+if ! INHIBIT_CMD="$(detect_inhibitor)"; then
+    echo "Error: No working logind-compatible inhibitor was found." >&2
+    echo >&2
+    echo "Supported environments:" >&2
+    echo "  - systemd with systemd-logind" >&2
+    echo "  - non-systemd with elogind" >&2
     exit 1
 fi
 
@@ -59,7 +72,7 @@ charger_online() {
     return 1
 }
 
-# 4. Check if the charger is connected
+# Check if the charger is connected (precondition check)
 if ! charger_online; then
     echo "Error: Charger not detected or not connected." >&2
     echo "Please connect the charger and try again." >&2
@@ -77,12 +90,11 @@ echo
 echo "Press Ctrl+C to terminate and restore normal behavior."
 echo "=============================================="
 
-# 5. Execute systemd-inhibit to block sleep and lid-switch actions.
-# This requires appropriate polkit permissions for handle-lid-switch.
-# If permission is denied, systemd-inhibit will output an error and exit.
-exec systemd-inhibit \
+# Execute the inhibitor to block sleep and lid-switch actions.
+# The lock is active for the lifetime of this command.
+exec "$INHIBIT_CMD" \
     --what="sleep:handle-lid-switch" \
     --who="${USER:-$(id -un)}" \
     --why="Keep laptop awake while charging for SSH access" \
     --mode="block" \
-    bash -c 'while sleep 3600; do :; done'
+    bash -c 'while :; do sleep 3600; done'
