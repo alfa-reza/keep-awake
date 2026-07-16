@@ -118,6 +118,20 @@ function rejects_unknown_options { #@test
     [[ "$output" == *"Unknown option"* ]]
 }
 
+function rejects_arguments_after_double_dash { #@test
+    run "$SCRIPT" -- unexpected-argument
+    [[ "$status" -eq 2 ]]
+    [[ "$output" == *"Unexpected argument: unexpected-argument"* ]]
+}
+
+function accepts_double_dash_without_arguments { #@test
+    set_ac_offline
+    run "$SCRIPT" --
+    [[ "$status" -eq 1 ]]
+    [[ "$output" == *"Error: External power is not detected."* ]]
+    [[ "$output" != *"Unexpected argument"* ]]
+}
+
 function invalid_poll_interval { #@test
     export KEEP_AWAKE_POLL_INTERVAL=abc
     run "$SCRIPT"
@@ -196,6 +210,14 @@ function multiple_supplies_one_online { #@test
     "$SCRIPT" >"$LOG_FILE" 2>&1 3>&- &
     KEEP_AWAKE_PID=$!
     wait_for_log "KEEP AWAKE ACTIVE"
+}
+
+function supply_without_type_is_not_external_power { #@test
+    mkdir -p "$MOCK_POWER/UNKNOWN"
+    echo "1" > "$MOCK_POWER/UNKNOWN/online"
+    run "$SCRIPT"
+    [[ "$status" -eq 1 ]]
+    [[ "$output" == *"Error: External power is not detected."* ]]
 }
 
 function systemd_fails_elogind_succeeds { #@test

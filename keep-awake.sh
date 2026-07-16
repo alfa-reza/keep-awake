@@ -59,6 +59,10 @@ parse_arguments() {
                 ;;
             --)
                 shift
+                if (($# > 0)); then
+                    printf 'Error: Unexpected argument: %s\n' "$1" >&2
+                    exit 2
+                fi
                 break
                 ;;
             -*)
@@ -129,9 +133,11 @@ charger_online() {
     for dir in "${power_supplies[@]}"; do
         [[ -d "$dir" ]] || continue
         [[ -f "$dir/online" ]] || continue
+        [[ -f "$dir/type" ]] || continue
 
         online="$(cat "$dir/online" 2>/dev/null || echo 0)"
-        supply_type="$(cat "$dir/type" 2>/dev/null || echo Unknown)"
+        supply_type="$(cat "$dir/type" 2>/dev/null || true)"
+        [[ -n "$supply_type" ]] || continue
 
         if [[ "$supply_type" != "Battery" ]]; then
             if [[ "$online" == "1" ]]; then

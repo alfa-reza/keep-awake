@@ -57,6 +57,11 @@ reporting and lid-close behavior.
 - `KEEP_AWAKE_POLL_INTERVAL`: Interval in seconds between power supply checks (default: `5`).
 - `KEEP_AWAKE_DEBOUNCE_SECONDS`: Delay in seconds before auto-releasing the lock after power is lost (default: `30`).
 
+External power detection requires each candidate power-supply entry to expose a
+non-empty `type` and an `online` value of `1`. Entries whose type is exactly
+`Battery` are ignored; other reported types, such as `Mains` or `USB`, are
+treated as external power when online. Positional arguments are not supported.
+
 Running multiple instances creates multiple independent inhibitor locks. Normal
 sleep and lid-close behavior is restored after all running instances have
 exited.
