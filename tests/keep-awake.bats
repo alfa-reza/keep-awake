@@ -46,6 +46,19 @@ wait_for_log() {
     return 1
 }
 
+wait_seconds_and_check_alive() {
+    local duration="$1"
+    local start="$SECONDS"
+    while ((SECONDS - start < duration)); do
+        if ! kill -0 "$KEEP_AWAKE_PID" 2>/dev/null; then
+            printf 'Process exited unexpectedly during wait\n' >&2
+            return 1
+        fi
+        sleep 0.1
+    done
+    return 0
+}
+
 set_ac_online() {
     mkdir -p "$MOCK_POWER/AC"
     echo "Mains" > "$MOCK_POWER/AC/type"
@@ -142,9 +155,9 @@ function ac_reconnect_resets_timer { #@test
     KEEP_AWAKE_PID=$!
     wait_for_log "KEEP AWAKE ACTIVE"
     set_ac_offline
-    sleep 1 # Before debounce (2s)
+    wait_seconds_and_check_alive 1 # Before debounce (2s)
     set_ac_online
-    sleep 2 # Past original debounce
+    wait_seconds_and_check_alive 2 # Past original debounce
     if grep -Fq "Releasing inhibitor lock" "$LOG_FILE"; then
         return 1
     fi
@@ -156,11 +169,14 @@ function ac_offline_after_reconnect { #@test
     KEEP_AWAKE_PID=$!
     wait_for_log "KEEP AWAKE ACTIVE"
     set_ac_offline
-    sleep 1
+    wait_seconds_and_check_alive 1
     set_ac_online
-    sleep 1
+    wait_seconds_and_check_alive 1
     set_ac_offline
     wait_for_log "Releasing inhibitor lock"
+    run wait "$KEEP_AWAKE_PID"
+    [[ "$status" -eq 0 ]]
+    unset KEEP_AWAKE_PID
 }
 
 function power_supply_directory_missing { #@test
@@ -210,7 +226,7 @@ function allow_battery_skips_monitoring { #@test
     "$SCRIPT" --allow-battery >"$LOG_FILE" 2>&1 3>&- &
     KEEP_AWAKE_PID=$!
     wait_for_log "KEEP AWAKE ACTIVE"
-    sleep 3 # Past debounce
+    wait_seconds_and_check_alive 3 # Past debounce
     if grep -Fq "Releasing inhibitor lock" "$LOG_FILE"; then
         return 1
     fi
