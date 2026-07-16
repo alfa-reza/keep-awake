@@ -220,6 +220,15 @@ function supply_without_type_is_not_external_power { #@test
     [[ "$output" == *"Error: External power is not detected."* ]]
 }
 
+function supply_with_empty_type_is_not_external_power { #@test
+    mkdir -p "$MOCK_POWER/UNKNOWN"
+    : >"$MOCK_POWER/UNKNOWN/type"
+    echo "1" >"$MOCK_POWER/UNKNOWN/online"
+    run "$SCRIPT"
+    [[ "$status" -eq 1 ]]
+    [[ "$output" == *"Error: External power is not detected."* ]]
+}
+
 function systemd_fails_elogind_succeeds { #@test
     set_ac_online
     export FAKE_SYSTEMD_INHIBITOR_FAIL=true
