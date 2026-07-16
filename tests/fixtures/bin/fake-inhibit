@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "${0##*/}" in
+    systemd-inhibit)
+        if [[ "${FAKE_SYSTEMD_INHIBITOR_FAIL:-false}" == "true" ]]; then
+            exit 1
+        fi
+        ;;
+    elogind-inhibit)
+        if [[ "${FAKE_ELOGIND_INHIBITOR_FAIL:-false}" == "true" ]]; then
+            exit 1
+        fi
+        ;;
+    *)
+        printf 'Unexpected fake inhibitor name: %s\n' "${0##*/}" >&2
+        exit 2
+        ;;
+esac
+
+while (($# > 0)); do
+    case "$1" in
+        --what=* | --who=* | --why=* | --mode=*)
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+exec "$@"
