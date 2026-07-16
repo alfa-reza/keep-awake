@@ -60,8 +60,10 @@ set_ac_offline() {
 
 function ac_online_startup_succeeds { #@test
     set_ac_online
-    run "$SCRIPT" --version
-    [[ "$status" -eq 0 ]]
+    "$SCRIPT" >"$LOG_FILE" 2>&1 3>&- &
+    KEEP_AWAKE_PID=$!
+    wait_for_log "KEEP AWAKE ACTIVE"
+    kill -0 "$KEEP_AWAKE_PID"
 }
 
 function ac_offline_startup_fails { #@test
@@ -129,6 +131,9 @@ function ac_offline_auto_releases { #@test
     wait_for_log "KEEP AWAKE ACTIVE"
     set_ac_offline
     wait_for_log "Releasing inhibitor lock"
+    run wait "$KEEP_AWAKE_PID"
+    [[ "$status" -eq 0 ]]
+    unset KEEP_AWAKE_PID
 }
 
 function ac_reconnect_resets_timer { #@test

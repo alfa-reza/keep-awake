@@ -3,7 +3,7 @@
 A professional Bash script that starts only when external power is detected and then holds a logind-compatible inhibitor lock until terminated, allowing a laptop to remain awake with the lid closed for workloads such as SSH.
 
 ## Features
-- **Charger Detection**: Checks for an active external power source (AC/Mains/USB PD) using `/sys/class/power_supply` and fails fast if running only on battery. This check serves as a startup precondition.
+- **Continuous Power Monitoring**: Actively monitors the external power source (AC/Mains/USB PD) using `/sys/class/power_supply`. It fails fast if running only on battery at startup, and automatically releases the inhibitor lock if external power is lost for about 30 seconds.
 - **Dynamic Capability Detection**: Probes the system for a working logind-compatible inhibitor backend (`systemd-inhibit` or `elogind-inhibit`) by actively attempting to acquire a temporary lock. No hard systemd init or daemon dependencies.
 - **Graceful Termination**: The inhibitor lock is tied to the lifecycle of the script. Pressing `Ctrl+C` terminates the script and immediately restores normal system power behavior.
 
@@ -45,6 +45,18 @@ reporting and lid-close behavior.
 3. **To stop and restore normal behavior**:
    Simply press `Ctrl+C` in the terminal running the script.
 
+### Command Line Options
+
+- `--allow-battery`, `--force`: Allow operation without external power. The inhibitor lock will not auto-release if the charger is disconnected.
+- `--version`: Show version information.
+- `-h`, `--help`: Show the help message.
+
+### Environment Variables
+
+- `KEEP_AWAKE_POWER_SUPPLY_PATH`: Path to the sysfs power_supply directory (default: `/sys/class/power_supply`).
+- `KEEP_AWAKE_POLL_INTERVAL`: Interval in seconds between power supply checks (default: `5`).
+- `KEEP_AWAKE_DEBOUNCE_SECONDS`: Delay in seconds before auto-releasing the lock after power is lost (default: `30`).
+
 Running multiple instances creates multiple independent inhibitor locks. Normal
 sleep and lid-close behavior is restored after all running instances have
 exited.
@@ -54,8 +66,8 @@ exited.
 ## Limitations
 
 Keep Awake holds a logind-compatible inhibitor lock only while the process is
-running. The charger check is performed at startup and is not repeated after
-the inhibitor starts.
+running. If battery operation is not explicitly allowed, the inhibitor lock is
+automatically released shortly after external power is disconnected.
 
 It does not:
 
@@ -95,10 +107,11 @@ Perform these steps to verify that your system is configured correctly and that 
 
 4. **Verify Precondition Fails on Battery**: Run the script while the charger is disconnected. Verify that startup fails immediately with:
    ```text
-   Error: Charger not detected or not connected.
+   Error: External power is not detected.
+   Connect external power or use --allow-battery.
    ```
 
-5. **Verify Precondition Lifetime**: Run the script while the charger is connected, then unplug the charger. Verify that the script remains active (as charger detection is checked at startup only).
+5. **Verify Auto-Release**: Run the script while the charger is connected, then unplug the charger. Verify that after about 30 seconds, the script prints an auto-release message and terminates.
 
 6. **Verify Lock Release**: Press `Ctrl+C` on the active script, and verify that the inhibitor lock is released immediately.
 
